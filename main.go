@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"flag"
 	"fmt"
@@ -8,6 +9,8 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -56,10 +59,13 @@ func getGoFiles(path string) (files []string, err error) {
 
 	return
 }
-
-func parseControllerFiles(path string) {
+func IsExist(f string) bool {
+	_, err := os.Stat(f)
+	return err == nil || os.IsExist(err)
+}
+func parseControllerFiles(path, moduleName string) {
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+	f, err := parser.ParseFile(fset, path, nil, 0)
 	if err != nil {
 		return
 	}
@@ -88,6 +94,51 @@ func parseControllerFiles(path string) {
 		fmt.Println(mathes[0])
 		mathAll := regexp.MustCompile(`,(.+?)\)`).FindAllStringSubmatch(mathes[0], -1)
 		fmt.Println(mathAll)
+		dir := filepath.Dir(path)
+		idx := strings.LastIndex(dir, "\\")
+		packageName := ""
+		if idx != -1 {
+			packageName = dir[idx+1:]
+		}
+
+		for _, math1 := range mathAll {
+			//去空格
+			tmp := strings.Trim(math1[1], " ")
+			bts := []byte(tmp)
+			firstLower := string(byte(bts[0]+32)) + tmp[1:]
+
+			file1 := dir + "\\" + firstLower + ".go"
+			fmt.Println(file1)
+			if IsExist(file1) {
+				continue
+			}
+			var s string
+			s += "//gen\n\n"
+			s += fmt.Sprintf("package %s\n\n", packageName)
+			s += "import (\n"
+			s += "\t\"github.com/gin-gonic/gin\"\n"
+			fmt.Println(moduleName)
+			s += fmt.Sprintf("\t\"%s/conf\"\n", moduleName)
+			s += "\t\"xgit.xiaoniangao.cn/xngo/lib/sdk/lib\"\n"
+			s += "\t\"xgit.xiaoniangao.cn/xngo/lib/sdk/xng\"\n)\n\n"
+
+			s += fmt.Sprintf("type %sReq struct {\n}\n\n", tmp)
+			s += fmt.Sprintf("type %sResp struct {\n}\n\n", tmp)
+			s += fmt.Sprintf("func (req *%sReq)checkParam() (ok bool) {\n\treturn\n}\n\n", tmp)
+			s += fmt.Sprintf("func %s(c *gin.Context) {\n", tmp)
+			s += "\txc := xng.NewXContext(c)\n"
+			s += fmt.Sprintf("\tvar req *%sReq\n", tmp)
+			s += "\tif !xc.GetReqObject(&req) {\n"
+			s += "\t\treturn\n\t}\n"
+			s += "\tif !req.checkParam() {\n"
+			s += "\t\txc.ReplyFail(lib.CodePara)\n"
+			s += "\t\tconf.Logger.Error(\"fail to check param\", \"req\", req)\n"
+			s += "\t\treturn\n\t}\n\n"
+			s += "\txc.ReplyOK(nil)\n}\n"
+			//math1[1]
+			err = ioutil.WriteFile(file1, []byte(s), 0644)
+			//break
+		}
 	}
 
 	return
@@ -100,8 +151,31 @@ func main() {
 		return
 	}
 
+	file, _ := os.Open("go.mod")
+
+	defer file.Close()
+	rd := bufio.NewReader(file)
+	var line string
+	for {
+		line, err = rd.ReadString('\n') //以'\n'为结束符读入一行
+		if err != nil || io.EOF == err {
+			break
+		}
+		idx := strings.Index(line, "module")
+		if idx == -1 {
+			continue
+		}
+
+		line = strings.Replace(line, "module", "", -1)
+		line = strings.Trim(line, " \t\n")
+
+		break
+	}
+	fmt.Println(line)
+	_ = paths
+
 	for _, path := range paths {
-		parseControllerFiles(path)
+		parseControllerFiles(path, line)
 	}
 	//log.Println("dddd")
 }
