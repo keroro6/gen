@@ -1,0 +1,64 @@
+app:
+  name: "traffic-dist-recall"   #应用名称
+  port: 7006    #服务器端口号
+
+xlog:
+  fileConfig:
+    logFilePath: "./log/" #文件输出路径
+    maxSize: 1024  #文件最大尺寸,以MB为单位，超过即创建第二个文件
+    maxBackups: 2  #最大备份文件数
+    maxAge: 7  #保存时间
+    compress: true #是否压缩
+    console: true #是否是需要控制台输出
+    levelString: debug #日志输出等级，debug,info,warn,error,panic,fatal
+logger:
+  fileConfig:
+    logFilePath: traffic_dist_recall
+    maxSize: 64
+    maxBackups: 3
+    maxAge: 1
+    console: true
+    compress: true
+    levelString: debug         #debug,info,warn,error,panic,fatal
+traceLog:
+  fileConfig:
+    logFilePath: trace/trace
+    maxSize: 64
+    maxBackups: 3
+    maxAge: 1
+    compress: true
+    console: true
+    levelString: debug         #debug,info,warn,error,panic,fatal
+addrs:
+  clog: "clog.srv.ns"   #clog的名字服务地址
+
+redis:
+  abtest:
+    addr: "192.168.11.3:6379"
+    auth: "ec8bcbe193bba9e9"
+    db: 0
+    poolSize: 100
+    readTimeout: 300 #ms
+    dialTimeout: 1000   # ms
+    writeTimeout: 300
+
+redisCluster:
+  dist_cluster:
+    addrs:
+      - "192.168.11.10:6379"
+      - "192.168.11.10:6380"
+      - "192.168.11.10:6381"
+      - "192.168.11.10:6382"
+      - "192.168.11.10:6383"
+      - "192.168.11.10:6384"
+    auth: "ec8bcbe193bba9e9"
+    poolSize: 100
+    dialTimeout: 1000   # ms
+    readTimeout: 100    # ms
+    writeTimeout: 100   # ms
+mongo:
+  traffic_dist:
+    dsn: "mongodb://192.168.11.2:27077,192.168.11.2:27078"
+
+experiments:
+  dispatch: dispatch1    #分发层实验名

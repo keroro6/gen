@@ -1,0 +1,50 @@
+app:
+  name: "traffic_dist_recall" #应用名称
+  port: 8080  #服务器端口号
+
+xlog:
+  fileConfig:
+    logFilePath: "./log/" #文件输出路径
+    maxSize: 1024  #文件最大尺寸,以MB为单位，超过即创建第二个文件
+    maxBackups: 2  #最大备份文件数
+    maxAge: 7  #保存时间
+    compress: true #是否压缩
+    console: true #是否是需要控制台输出
+    levelString: debug #日志输出等级，debug,info,warn,error,panic,fatal
+
+addrs:
+  clog: "clog.srv.ns"   #clog的名字服务地址
+
+redis:
+  skel:
+    addr: "120.25.66.46:6379"
+    auth: ""
+    db: 2
+    poolSize: 100
+    dialTimeout: 1000   # ms
+    readTimeout: 100    # ms
+    writeTimeout: 100   # ms
+
+
+redisCluster:
+  skel:
+    addrs:
+      - "120.25.66.46:7000"
+      - "120.25.66.46:7001"
+      - "120.25.66.46:7002"
+      - "120.25.66.46:7003"
+      - "120.25.66.46:7004"
+      - "120.25.66.46:7005"
+    auth: ""
+    poolSize: 100
+    dialTimeout: 1000   # ms
+    readTimeout: 100    # ms
+    writeTimeout: 100   # ms
+
+mongo:
+  skel:
+    dsn: "mongodb://120.25.66.46:27017?minPoolSize=10&maxIdleTimeMS=10000"
+  body:
+    dsn: "mongodb://120.25.66.46:27077?minPoolSize=10&maxIdleTimeMS=10000"
+
+lruSize: 10000

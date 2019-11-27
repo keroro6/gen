@@ -9,9 +9,10 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
-	"golang.org/x/text/internal/tag"
 	"io"
 	"io/ioutil"
+
+	//"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -20,7 +21,7 @@ import (
 )
 
 var (
-	controllerPath string
+	controllerFlag bool
 	filterPath     string
 	serviceFlag    bool
 	daoFlag        bool
@@ -79,24 +80,17 @@ func parseControllerFiles(path, moduleName string) {
 		if !mdecl.Name.IsExported() {
 			continue
 		}
-
 		str := new(bytes.Buffer)
 		printer.Fprint(str, fset, mdecl)
-		//log.Println(str.String())
 		mathes := regexp.MustCompile(`func.+?\(.+?\*gin.Engine\) {(.|\n)*}`).FindStringSubmatch(str.String())
-		//for _, math2 := range mathes {
-		//	log.Println(math2)
-		//	log.Println("111111")
-		//}
 		if len(mathes) <= 1 {
-			//log.Println(mathes)
 			continue
 		}
 		fmt.Println(mathes[0])
 		mathAll := regexp.MustCompile(`,(.+?)\)`).FindAllStringSubmatch(mathes[0], -1)
 		fmt.Println(mathAll)
 		dir := filepath.Dir(path)
-		idx := strings.LastIndex(dir, "\\")
+		idx := strings.LastIndex(dir, "/")
 		packageName := ""
 		if idx != -1 {
 			packageName = dir[idx+1:]
@@ -110,17 +104,17 @@ func parseControllerFiles(path, moduleName string) {
 
 			file1 := dir + "/" + firstLower + ".go"
 			fmt.Println(file1)
-			if IsExist(file1) {
-				continue
-			}
+
 			var s string
 			s += "//gen\n\n"
 			s += fmt.Sprintf("package %s\n\n", packageName)
 			s += "import (\n"
 			s += "\t\"github.com/gin-gonic/gin\"\n"
-			fmt.Println(moduleName)
 			s += fmt.Sprintf("\t\"%s/api\"\n", moduleName)
 			s += fmt.Sprintf("\t\"%s/conf\"\n", moduleName)
+			if serviceFlag {
+				s += fmt.Sprintf("\t\"%s/service/%s\"\n", moduleName, packageName)
+			}
 			s += "\t\"xgit.xiaoniangao.cn/xngo/lib/sdk/lib\"\n"
 			s += "\t\"xgit.xiaoniangao.cn/xngo/lib/sdk/xng\"\n)\n\n"
 
@@ -134,43 +128,104 @@ func parseControllerFiles(path, moduleName string) {
 			s += "\t\txc.ReplyFail(lib.CodePara)\n"
 			s += "\t\tconf.Logger.Error(\"fail to check param\", \"req\", req)\n"
 			s += "\t\treturn\n\t}\n\n"
+			s += "\t//some operations\n\n\n"
+			if serviceFlag {
+				serviceName := fmt.Sprintf("%sService", tmp)
+				s += fmt.Sprintf("\tif err := %s.%s(req); err != nil {\n", packageName, serviceName)
+				s += fmt.Sprintf("\t\tconf.Logger.Error(\"%s\", \"req\", req, \"err\", err)\n", serviceName)
+				s += fmt.Sprintf("\t\txc.ReplyFail(lib.CodeSrv)\n")
+				s += fmt.Sprintf("\t\treturn\n\t}\n")
+			}
 			s += "\txc.ReplyOK(nil)\n}\n"
 			//math1[1]
-			//err = ioutil.WriteFile(file1, []byte(s), 0644)
-
+			if !IsExist(file1) {
+				err = ioutil.WriteFile(file1, []byte(s), 0644)
+			}
 			var r string
 			r += "//gen\n\n"
-			r += fmt.Sprintf("package api")
-			r += fmt.Sprintf("type %sReq struct {\n}\n\n", tmp)
-			r += fmt.Sprintf("type %sResp struct {\n}\n\n", tmp)
+			r += fmt.Sprintf("package api\n\n")
+			r += fmt.Sprintf("type %sReq struct {\n\n}\n\n", tmp)
+			r += fmt.Sprintf("type %sResp struct {\n\n}\n\n", tmp)
 
-			//fmt.Println(filepath.Dir(dir))
-			//err = ioutil.WriteFile(file1, []byte(s), 0644)
+			baseDir := filepath.Dir(filepath.Dir(dir))
+			apiPath := baseDir + "/api/" + firstLower + "Api.go"
+
+			_ = apiPath
+			if !IsExist(apiPath) {
+				err = ioutil.WriteFile(apiPath, []byte(r), 0644)
+			}
+
+			if serviceFlag {
+				servicePath := fmt.Sprintf(baseDir+"/service/%s/%sService.go", packageName, firstLower)
+				if !IsExist(servicePath) {
+					fmt.Println(servicePath)
+					var a string
+					a += fmt.Sprintf("package %s\n\n", packageName)
+					a += "import (\n"
+					a += fmt.Sprintf("\t\"%s/api\"\n)\n", moduleName)
+					//a += fmt.Sprintf("\t\"%s/dao\"\n", moduleName)
+					//a += "\t\"xgit.xiaoniangao.cn/xngo/lib/sdk/lib\"\n"
+					//a += "\t\"xgit.xiaoniangao.cn/xngo/lib/sdk/xng\"\n)\n\n"
+					a += fmt.Sprintf("func %sService(req *api.%sReq) {\n\n", tmp, tmp)
+					a += "}\n"
+					err = ioutil.WriteFile(servicePath, []byte(a), 0644)
+				}
+			}
+			//if serviceFlag {
+			//	parseServiceFiles(path, )
+			//}
 			break
 		}
 	}
 
 	return
 }
+
+func parseDaoFiles(path, moduleName string) {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+	if err != nil {
+		return
+	}
+	fmt.Println(path)
+	for _, decl := range f.Decls {
+		mdecl, ok := decl.(*ast.GenDecl)
+		if !ok {
+			continue
+		}
+		//fmt.Println(mdecl.Tok)
+		if mdecl.Doc != nil {
+			fmt.Println(mdecl.Specs)
+			for _, comment := range (*mdecl.Doc).List {
+				//fmt.Println()
+				if comment != nil {
+					fmt.Println(*comment)
+				}
+			}
+
+		}
+
+	}
+}
 func main() {
-	flag.StringVar(&controllerPath, "c", "controller", "Specify the directory of controller path")
-	//flag.BoolVar(&serviceFlag, "s", false, "generate service")
-	//flag.BoolVar(&daoFlag, "d", false, "generate dao")
-	//flag.BoolVar(&redisFlag, "r", false, "generate redis")
-	//
-	//flag.Usage = func() {
-	//	fmt.Fprintf(os.Stderr, "A partner for golang webserver\n")
-	//	fmt.Fprintf(os.Stderr, "version: 1.12, Created by wgy [11/2019]\n\n")
-	//	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-	//	flag.PrintDefaults()
-	//}
-	//
-	//flag.Parse()
+	flag.BoolVar(&controllerFlag, "c", false, "Specify the directory of controller path")
+	flag.BoolVar(&serviceFlag, "s", false, "generate service")
+	flag.BoolVar(&daoFlag, "d", false, "generate dao")
+	flag.BoolVar(&redisFlag, "r", false, "generate redis")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "A partner for golang webserver\n")
+		fmt.Fprintf(os.Stderr, "version: 1.12, Created by wgy [11/2019]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+
+	flag.Parse()
 
 	if daoFlag == true || redisFlag == true {
 		serviceFlag = true
 	}
-	paths, err := getGoFiles(controllerPath)
+	paths, err := getGoFiles(".")
 	if err != nil {
 		log.Printf("get go files err:%v", err)
 		return
@@ -204,12 +259,11 @@ func main() {
 		parseControllerFiles(path, line)
 	}
 
-	if serviceFlag {
-
-	}
-
+	daoFlag = true
 	if daoFlag {
-
+		for _, path := range paths {
+			parseDaoFiles(path, line)
+		}
 	}
 
 	if redisFlag {

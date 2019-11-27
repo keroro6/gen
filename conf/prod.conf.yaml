@@ -1,0 +1,52 @@
+app:
+  name: "traffic-dist-recall"  #应用名称
+  port: 7001  #服务器端口号
+xlog:
+  fileConfig:
+    logFilePath: "./log/" #文件输出路径
+    maxSize: 1024  #文件最大尺寸,以MB为单位，超过即创建第二个文件
+    maxBackups: 2  #最大备份文件数
+    maxAge: 7  #保存时间
+    compress: false #是否压缩
+    console: false #是否是需要控制台输出
+    levelString: info #日志输出等级，debug,info,warn,error,panic,fatal
+logger:
+  fileConfig:
+    logFilePath: /data/server/logs/traffic_dist_recall
+    maxSize: 1024
+    maxBackups: 50
+    maxAge: 7
+    console: false
+    compress: false
+    levelString: info         #debug,info,warn,error,panic,fatal
+traceLog:
+  fileConfig:
+    logFilePath: /data/server/logs/trace/trace
+    maxSize: 1024
+    maxBackups: 10
+    maxAge: 50
+    compress: false
+    console: false
+    levelString: info         #debug,info,warn,error,panic,fataladdrs:
+addrs:
+  clog: "clog.srv.ns"  #clog的名字服务地址
+  bizsrv: "bizsrv.srv.ns"
+redisCluster:
+  dist_cluster:
+    addrs:
+      - "172.16.55.42:6379"
+      - "172.16.55.43:6379"
+      - "172.16.55.44:6379"
+      - "172.16.71.67:6379"
+      - "172.16.71.68:6379"
+      - "172.16.71.69:6379"
+    auth: ""
+    poolSize: 100
+    dialTimeout: 1000   # ms
+    readTimeout: 100    # ms
+    writeTimeout: 100   # ms
+mongo:
+  traffic_dist:
+    dsn: ""
+
+lruSize: 10000
