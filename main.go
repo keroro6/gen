@@ -9,6 +9,7 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"golang.org/x/text/internal/tag"
 	"io"
 	"io/ioutil"
 	"log"
@@ -21,9 +22,9 @@ import (
 var (
 	controllerPath string
 	filterPath     string
-	lowerFlag      bool
-	snakeFlag      bool
-	shortFlag      bool
+	serviceFlag    bool
+	daoFlag        bool
+	redisFlag      bool
 	buf            = new(bytes.Buffer)
 )
 
@@ -107,7 +108,7 @@ func parseControllerFiles(path, moduleName string) {
 			bts := []byte(tmp)
 			firstLower := string(byte(bts[0]+32)) + tmp[1:]
 
-			file1 := dir + "\\" + firstLower + ".go"
+			file1 := dir + "/" + firstLower + ".go"
 			fmt.Println(file1)
 			if IsExist(file1) {
 				continue
@@ -118,13 +119,12 @@ func parseControllerFiles(path, moduleName string) {
 			s += "import (\n"
 			s += "\t\"github.com/gin-gonic/gin\"\n"
 			fmt.Println(moduleName)
+			s += fmt.Sprintf("\t\"%s/api\"\n", moduleName)
 			s += fmt.Sprintf("\t\"%s/conf\"\n", moduleName)
 			s += "\t\"xgit.xiaoniangao.cn/xngo/lib/sdk/lib\"\n"
 			s += "\t\"xgit.xiaoniangao.cn/xngo/lib/sdk/xng\"\n)\n\n"
 
-			s += fmt.Sprintf("type %sReq struct {\n}\n\n", tmp)
-			s += fmt.Sprintf("type %sResp struct {\n}\n\n", tmp)
-			s += fmt.Sprintf("func (req *%sReq)checkParam() (ok bool) {\n\treturn\n}\n\n", tmp)
+			s += fmt.Sprintf("func (req *api.%sReq)checkParam() (ok bool) {\n\treturn\n}\n\n", tmp)
 			s += fmt.Sprintf("func %s(c *gin.Context) {\n", tmp)
 			s += "\txc := xng.NewXContext(c)\n"
 			s += fmt.Sprintf("\tvar req *%sReq\n", tmp)
@@ -136,8 +136,17 @@ func parseControllerFiles(path, moduleName string) {
 			s += "\t\treturn\n\t}\n\n"
 			s += "\txc.ReplyOK(nil)\n}\n"
 			//math1[1]
-			err = ioutil.WriteFile(file1, []byte(s), 0644)
-			//break
+			//err = ioutil.WriteFile(file1, []byte(s), 0644)
+
+			var r string
+			r += "//gen\n\n"
+			r += fmt.Sprintf("package api")
+			r += fmt.Sprintf("type %sReq struct {\n}\n\n", tmp)
+			r += fmt.Sprintf("type %sResp struct {\n}\n\n", tmp)
+
+			//fmt.Println(filepath.Dir(dir))
+			//err = ioutil.WriteFile(file1, []byte(s), 0644)
+			break
 		}
 	}
 
@@ -145,12 +154,29 @@ func parseControllerFiles(path, moduleName string) {
 }
 func main() {
 	flag.StringVar(&controllerPath, "c", "controller", "Specify the directory of controller path")
+	//flag.BoolVar(&serviceFlag, "s", false, "generate service")
+	//flag.BoolVar(&daoFlag, "d", false, "generate dao")
+	//flag.BoolVar(&redisFlag, "r", false, "generate redis")
+	//
+	//flag.Usage = func() {
+	//	fmt.Fprintf(os.Stderr, "A partner for golang webserver\n")
+	//	fmt.Fprintf(os.Stderr, "version: 1.12, Created by wgy [11/2019]\n\n")
+	//	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+	//	flag.PrintDefaults()
+	//}
+	//
+	//flag.Parse()
+
+	if daoFlag == true || redisFlag == true {
+		serviceFlag = true
+	}
 	paths, err := getGoFiles(controllerPath)
 	if err != nil {
 		log.Printf("get go files err:%v", err)
 		return
 	}
 
+	log.Printf("s:%v,d:%v,r:%v\n", serviceFlag, daoFlag, redisFlag)
 	file, _ := os.Open("go.mod")
 
 	defer file.Close()
@@ -176,6 +202,18 @@ func main() {
 
 	for _, path := range paths {
 		parseControllerFiles(path, line)
+	}
+
+	if serviceFlag {
+
+	}
+
+	if daoFlag {
+
+	}
+
+	if redisFlag {
+
 	}
 	//log.Println("dddd")
 }
